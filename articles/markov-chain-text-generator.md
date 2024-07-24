@@ -1,5 +1,5 @@
 ---
-title: "「しかのこのこのここしたんたん」をマルコフモデルで考えた時、生成される確率を実感できるデモを構築した"
+title: "「しかのこのこのここしたんたん」を読み上げさせたい！！"
 slug: "markov-chain-text-generator"
 published: true
 type: "tech"
