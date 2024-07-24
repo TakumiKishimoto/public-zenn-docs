@@ -4,7 +4,7 @@ slug: "markov-chain-text-generator"
 published: true
 type: "tech"
 topics: ["Python", "Streamlit", "自然言語処理", "マルコフ連鎖"]
-emoji: "🦚"
+emoji: "🦌"
 ---
 
 # マルコフ連鎖を用いたインタラクティブなテキスト生成アプリの作成
