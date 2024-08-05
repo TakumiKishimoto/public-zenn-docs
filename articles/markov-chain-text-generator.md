@@ -58,8 +58,6 @@ from collections import defaultdict
 import random
 from gtts import gTTS
 import io
-import time
-import base64
 from gtts.tts import gTTSError
 
 def create_markov_model(text):
@@ -77,7 +75,7 @@ def calculate_transition_probabilities(model):
         probabilities[char] = {next_char: count / total for next_char, count in transitions.items()}
     return probabilities
 
-def generate_text(probabilities, start_char, length=14):
+def generate_text(probabilities, start_char, length):
     result = start_char
     current_char = start_char
     for _ in range(length - 1):
@@ -103,13 +101,6 @@ def text_to_speech(text, lang='ja'):
         st.error(f"音声の生成中にエラーが発生しました: {str(e)}")
         return None
 
-def autoplay_audio(file):
-    if file is None:
-        return
-    audio_base64 = base64.b64encode(file.getvalue()).decode()
-    audio_tag = f'<audio autoplay="true" src="data:audio/mp3;base64,{audio_base64}">'
-    st.markdown(audio_tag, unsafe_allow_html=True)
-
 st.title("マルコフ連鎖テキスト生成器")
 
 # 入力テキスト
@@ -132,55 +123,55 @@ if st.checkbox("遷移確率を表示"):
 start_char = st.text_input("開始文字", value="し")
 
 # セッション状態の初期化
-if 'running' not in st.session_state:
-    st.session_state.running = False
 if 'generated_text' not in st.session_state:
     st.session_state.generated_text = ""
 if 'audio' not in st.session_state:
     st.session_state.audio = None
 
-# 開始/停止ボタン
-if st.button("開始" if not st.session_state.running else "停止"):
-    st.session_state.running = not st.session_state.running
+# テキスト生成ボタン
+if st.button("テキスト生成"):
+    st.session_state.generated_text = generate_text(probabilities, start_char, length=len(text))
+    st.write(f"生成されたテキスト: {st.session_state.generated_text}")
 
-# 生成と再生の間隔（秒）
-interval = st.slider("生成間隔（秒）", 1, 10, 5)
-
-# テキスト生成と音声再生の領域
-text_area = st.empty()
-
-# 自動生成と再生
-if st.session_state.running:
-    st.session_state.generated_text = generate_text(probabilities, start_char)
-    text_area.write(f"生成されたテキスト: {st.session_state.generated_text}")
-    
     audio_fp = text_to_speech(st.session_state.generated_text)
     if audio_fp:
         st.session_state.audio = audio_fp
-        autoplay_audio(st.session_state.audio)
+        st.audio(st.session_state.audio, format='audio/mp3')
     else:
         st.warning("音声を生成できませんでした。テキストのみ表示します。")
-    
-    time.sleep(interval)
-    st.experimental_rerun()
 
-# 停止時も最後に生成されたテキストを表示
-elif st.session_state.generated_text:
-    text_area.write(f"最後に生成されたテキスト: {st.session_state.generated_text}")
+# 最後に生成されたテキストを表示
+if st.session_state.generated_text:
+    st.write(f"最後に生成されたテキスト: {st.session_state.generated_text}")
+
 ```
 
 ## 解説
 
-1. **ライブラリのインポート**: 必要なライブラリをインポートします。
-2. **マルコフモデル関連関数**: `create_markov_model`, `calculate_transition_probabilities`, `generate_text` はマルコフモデルの構築、遷移確率の計算、テキスト生成を行う関数です。
-3. **音声合成関連関数**: `text_to_speech`, `autoplay_audio` はテキストを音声に変換し、再生する関数です。
-4. **Streamlit アプリケーション**: Streamlit を用いて、ユーザーインターフェースを構築します。
-    * テキスト入力: `st.text_input` でユーザーがテキストを入力できます。
-    * 遷移確率の表示: `st.checkbox` と `st.write` で遷移確率を表示するかどうかを選択できます。
-    * 開始文字の入力: `st.text_input` でテキスト生成の開始文字を入力できます。
-    * 開始/停止ボタン: `st.button` でテキスト生成と音声再生の開始/停止を制御します。
-    * 生成間隔: `st.slider` でテキスト生成と音声再生の間隔を設定できます。
-    * テキストと音声の出力: `st.empty` と `st.write`, `autoplay_audio` で生成されたテキストと音声を表示、再生します。
+以下は、簡潔にまとめたStreamlitアプリケーションのコード解説です。
+
+
+
+1. **ライブラリのインポート**
+   - 必要なライブラリをインポートします。
+
+2. **マルコフモデル関連関数**
+   - `create_markov_model`: 入力テキストからマルコフモデルを作成します。
+   - `calculate_transition_probabilities`: マルコフモデルに基づいて遷移確率を計算します。
+   - `generate_text`: 遷移確率を基にランダムなテキストを生成します。
+
+3. **音声合成関連関数**
+   - `text_to_speech`: 生成されたテキストを音声に変換します。
+   - `autoplay_audio`: 音声データを自動再生します。
+
+4. **Streamlit アプリケーション**
+   - **テキスト入力**: `st.text_input` でユーザーがテキストを入力します。
+   - **遷移確率の表示**: `st.checkbox` で遷移確率の表示を選択し、`st.write` で表示します。
+   - **開始文字の入力**: `st.text_input` でテキスト生成の開始文字を入力します。
+   - **開始/停止ボタン**: `st.button` でテキスト生成と音声再生の開始/停止を制御します。
+   - **生成間隔**: `st.slider` でテキスト生成と音声再生の間隔を設定します。
+   - **テキストと音声の出力**: `st.empty` と `st.write` で生成されたテキストを表示し、`autoplay_audio` で音声を再生します。
+
 
 ## まとめ
 
