@@ -8,7 +8,7 @@ emoji: "🌸"
 
 ## はじめに
 
-APIを作成し、機械学習モデルをウェブアプリケーションから利用する方法を学びたいと思い、このプロジェクトを開始しました。RenderとStreamlitを使用することで、無料でデプロイできることを知り、有名なIrisデータセットを使用した機械学習モデルをAPIに組み込んだ[デモサイト](https://myrandomforestapi.streamlit.app/)を構築しました。ぜひ実際に体験してみてください。
+APIを作成し、機械学習モデルをウェブアプリケーションから利用する方法を学びたいと思い、このプロジェクトを開始しました。RenderとStreamlitを使用することで、無料でデプロイできることを知り、有名なIrisデータセットを使用した機械学習モデルをAPIに組み込んだ[デモサイト](https://myrandomforestapi.streamlit.app/)を構築しました。ぜひ実際に体験してみてください。初回実行の際には、約3分程度の時間がかかることがあります。
 
 https://myrandomforestapi.streamlit.app/
 
