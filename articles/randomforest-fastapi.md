@@ -12,7 +12,7 @@ APIを作成し、機械学習モデルをウェブアプリケーションか�
 
 https://myrandomforestapi.streamlit.app/
 
-![](/images/fastapi.png)
+![](/images/myrandomforestapi.png)
 
 ## Irisデータセットについて
 
@@ -88,6 +88,7 @@ python = "^3.12"
 streamlit = "^1.37.1"
 requests = "^2.32.3"
 pandas = "^2.2.2"
+altair = "^5.4.1"
 ```
 
 ## 機械学習モデルのトレーニング
@@ -129,10 +130,17 @@ from pydantic import BaseModel
 import joblib
 import numpy as np
 
+# FastAPIのインスタンスを作成
 app = FastAPI()
 
-# 学習済みモデルのロード
-model = joblib.load("./models/iris_model.pkl")
+# グローバル変数としてモデルを保持
+model = None
+
+# アプリ起動時にモデルをロードする
+@app.on_event("startup")
+async def load_model():
+    global model
+    model = joblib.load("./models/iris_model.pkl")
 
 # 入力データのスキーマを定義
 class IrisInput(BaseModel):
@@ -141,23 +149,27 @@ class IrisInput(BaseModel):
     petal_length: float
     petal_width: float
 
+# 推論エンドポイントを作成
 @app.post("/predict/")
 def predict(input_data: IrisInput):
-    # 入力データを配列に変換
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+
+    # 入力データをnumpy配列に変換
     data = np.array([[input_data.sepal_length, input_data.sepal_width,
                       input_data.petal_length, input_data.petal_width]])
     
-    # 品種の予測
+    # 予測
     prediction = model.predict(data)
     prediction_proba = model.predict_proba(data)
     
-    # 品種のラベル名リスト
-    label_names = model.classes_.tolist()
+    # 特徴量の重要度
+    feature_importances = model.feature_importances_
     
     return {
         "prediction": prediction[0],
-        "prediction_label": label_names[prediction[0]],
-        "prediction_proba": prediction_proba[0].tolist()
+        "prediction_proba": prediction_proba[0].tolist(),
+        "feature_importances": feature_importances.tolist()
     }
 ```
 
@@ -172,28 +184,32 @@ def predict(input_data: IrisInput):
 ```python
 import streamlit as st
 import requests
+import pandas as pd
+import altair as alt
 
-API_URL = "https://your-deployed-fastapi-url.onrender.com"
+API_URL = st.secrets["API_URL"]
+# API_URL = "http://localhost:8000"
 
-st.title("Iris Flower Species Prediction")
+# タイトル
+st.title("Iris Flower Prediction")
 
-st.write("""
-このアプリケーションでは、アヤメの花の特徴を入力すると、その品種を予測します。
-以下の4つの特徴を入力してください：
-""")
+# 初期値を設定
+default_sepal_length = 5.1
+default_sepal_width = 3.5
+default_petal_length = 1.4
+default_petal_width = 2.0
 
 # 入力フォーム
-st.header("アヤメの特徴を入力してください")
+st.header("Input the features of the Iris flower")
 
-sepal_length = st.number_input("がく片の長さ (cm)", min_value=0.0, value=5.1, format="%.2f")
-sepal_width = st.number_input("がく片の幅 (cm)", min_value=0.0, value=3.5, format="%.2f")
-petal_length = st.number_input("花弁の長さ (cm)", min_value=0.0, value=1.4, format="%.2f")
-petal_width = st.number_input("花弁の幅 (cm)", min_value=0.0, value=0.2, format
+sepal_length = st.number_input("Sepal Length (cm)", min_value=4.0, max_value=8.0, value=default_sepal_length, format="%.1f", step=0.1)
+sepal_width = st.number_input("Sepal Width (cm)", min_value=2.0, max_value=5.0, value=default_sepal_width, format="%.1f", step=0.1)
+petal_length = st.number_input("Petal Length (cm)", min_value=1.0, max_value=7.0, value=default_petal_length, format="%.1f", step=0.1)
+petal_width = st.number_input("Petal Width (cm)", min_value=0.1, max_value=2.5, value=default_petal_width, format="%.1f", step=0.1)
 
-="%.2f")
-
-# 予測ボタン
-if st.button("予測"):
+# 推論ボタン
+if st.button("Predict"):
+    # 入力データをAPIに送信
     payload = {
         "sepal_length": sepal_length,
         "sepal_width": sepal_width,
@@ -202,15 +218,44 @@ if st.button("予測"):
     }
 
     response = requests.post(f"{API_URL}/predict/", json=payload)
-    
+
     if response.status_code == 200:
         result = response.json()
-        st.write(f"予測品種: {result['prediction_label']}")
-        st.write("予測確率:")
-        for label, prob in zip(result['prediction_proba'], model.classes_):
-            st.write(f"{label}: {prob:.2%}")
+        prediction = result["prediction"]
+        prediction_proba = result["prediction_proba"]
+        # rename prediction_proba keys 0, 1, 2 to setosa, versicolor, virginica
+        prediction_proba = {"setosa": prediction_proba[0], "versicolor": prediction_proba[1], "virginica": prediction_proba[2]}
+        feature_importances = result["feature_importances"]
+
+        st.success(f"The predicted class is: {prediction}")
+
+        # Create a DataFrame for the prediction probabilities
+        proba_df = pd.DataFrame(list(prediction_proba.items()), columns=["Class", "Probability"])
+
+        # Create an Altair chart with rotated labels
+        chart = alt.Chart(proba_df).mark_bar().encode(
+            x=alt.X('Class:N', sort=None, axis=alt.Axis(labelAngle=45)),  # Rotate x-axis labels
+            y='Probability:Q',
+            color='Class:N'
+        ).properties(
+            title="Prediction Probability"
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+        # Display feature importances
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("Feature Importances")
+            feature_importances_df = pd.DataFrame({
+                "Feature": ["Sepal Length", "Sepal Width", "Petal Length", "Petal Width"],
+                "Importance": feature_importances
+            })
+            st.dataframe(feature_importances_df)
+
     else:
-        st.error("予測に失敗しました。")
+        st.error("Failed to get prediction")
 ```
 
 ## デプロイ
