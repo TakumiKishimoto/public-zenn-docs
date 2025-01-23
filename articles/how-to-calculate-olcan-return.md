@@ -87,7 +87,7 @@ published: true
 
 *※上記コードはGithubにて公開していますので参考にしてください*
 
-[https://github.com/TakumiKishimoto/ACWI]
+https://github.com/TakumiKishimoto/ACWI
 
 #### 上記からの考察
 
