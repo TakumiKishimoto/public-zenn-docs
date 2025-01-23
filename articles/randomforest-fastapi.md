@@ -12,7 +12,7 @@ APIを作成し、機械学習モデルをウェブアプリケーションか�
 
 https://myrandomforestapi.streamlit.app/
 
-![](/images/myrandomforestapi.png)
+![](/images/fastapi/myrandomforestapi.png)
 
 ## Irisデータセットについて
 
